@@ -10,6 +10,10 @@ const bangers = Bangers({ subsets: ['latin'], weight: '400', variable: '--font-d
 export const metadata: Metadata = {
   title: 'ComicKid Studio 🎨',
   description: 'Create amazing comic books!',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

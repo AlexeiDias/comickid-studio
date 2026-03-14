@@ -1,0 +1,91 @@
+<svg width="512" height="512" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .inner-ear { fill: #f9c8b0; }
+    .muzzle { fill: #fde8d0; }
+    .nose { fill: #ff8fa3; }
+    .eye-white { fill: white; }
+    .eye-shine { fill: white; }
+    .whisker { stroke: #7a4a20; stroke-width: 3; stroke-linecap: round; fill: none; }
+    .mouth { stroke: #b05020; stroke-width: 3.5; stroke-linecap: round; fill: none; }
+    .pencil-body { fill: #ffd23f; }
+    .pencil-tip { fill: #f4a056; }
+    .pencil-eraser { fill: #ff8fa3; }
+    .pencil-band { fill: #e8a020; }
+    .beret { fill: #e74c3c; }
+    .beret-band { fill: #c0392b; }
+    .beret-button { fill: #ffd23f; }
+    .outline { fill: none; stroke: #2a1a0e; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+    .outline-thin { fill: none; stroke: #2a1a0e; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  </style>
+  <rect x="0" y="0" width="680" height="680" rx="140" fill="#fff3d0"/>
+  <rect x="0" y="0" width="680" height="680" rx="140" fill="none" stroke="#f4a056" stroke-width="8"/>
+  <g transform="translate(420, 480) rotate(-40)">
+    <rect x="-18" y="-110" width="36" height="150" rx="4" class="pencil-body"/>
+    <rect x="-18" y="-110" width="36" height="18" rx="3" class="pencil-band"/>
+    <rect x="-14" y="-126" width="28" height="18" rx="4" class="pencil-eraser"/>
+    <polygon points="-18,40 18,40 8,70 -8,70" class="pencil-tip"/>
+    <polygon points="-8,70 8,70 0,88" fill="#2a1a0e"/>
+    <rect x="-18" y="-110" width="36" height="150" rx="4" class="outline-thin"/>
+    <rect x="-14" y="-126" width="28" height="18" rx="4" class="outline-thin"/>
+    <polygon points="-18,40 18,40 8,70 -8,70" class="outline-thin"/>
+  </g>
+  <ellipse cx="340" cy="560" rx="140" ry="90" fill="#f4a056"/>
+  <ellipse cx="340" cy="560" rx="140" ry="90" class="outline"/>
+  <ellipse cx="340" cy="562" rx="75" ry="54" fill="#fde8d0"/>
+  <ellipse cx="230" cy="620" rx="48" ry="28" fill="#f4a056"/>
+  <ellipse cx="230" cy="620" rx="48" ry="28" class="outline"/>
+  <ellipse cx="210" cy="610" rx="13" ry="10" fill="#fde8d0" stroke="#2a1a0e" stroke-width="2"/>
+  <ellipse cx="230" cy="606" rx="13" ry="10" fill="#fde8d0" stroke="#2a1a0e" stroke-width="2"/>
+  <ellipse cx="250" cy="610" rx="13" ry="10" fill="#fde8d0" stroke="#2a1a0e" stroke-width="2"/>
+  <ellipse cx="450" cy="610" rx="48" ry="28" fill="#f4a056"/>
+  <ellipse cx="450" cy="610" rx="48" ry="28" class="outline"/>
+  <ellipse cx="430" cy="600" rx="13" ry="10" fill="#fde8d0" stroke="#2a1a0e" stroke-width="2"/>
+  <ellipse cx="450" cy="596" rx="13" ry="10" fill="#fde8d0" stroke="#2a1a0e" stroke-width="2"/>
+  <ellipse cx="470" cy="600" rx="13" ry="10" fill="#fde8d0" stroke="#2a1a0e" stroke-width="2"/>
+  <path d="M480,570 Q580,520 570,440 Q560,380 520,390" fill="none" stroke="#f4a056" stroke-width="38" stroke-linecap="round"/>
+  <path d="M480,570 Q580,520 570,440 Q560,380 520,390" class="outline" stroke-width="3.5" stroke-linecap="round"/>
+  <ellipse cx="520" cy="390" rx="28" ry="22" fill="#fde8d0"/>
+  <ellipse cx="340" cy="340" rx="170" ry="155" fill="#f4a056"/>
+  <ellipse cx="340" cy="340" rx="170" ry="155" class="outline"/>
+  <polygon points="175,240 145,120 255,200" fill="#f4a056"/>
+  <polygon points="175,240 145,120 255,200" class="outline"/>
+  <polygon points="182,228 162,140 242,210" class="inner-ear"/>
+  <polygon points="505,240 535,120 425,200" fill="#f4a056"/>
+  <polygon points="505,240 535,120 425,200" class="outline"/>
+  <polygon points="498,228 518,140 438,210" class="inner-ear"/>
+  <ellipse cx="330" cy="220" rx="130" ry="60" class="beret"/>
+  <ellipse cx="310" cy="190" rx="80" ry="52" class="beret"/>
+  <ellipse cx="340" cy="248" rx="108" ry="22" class="beret-band"/>
+  <ellipse cx="330" cy="220" rx="130" ry="60" class="outline"/>
+  <ellipse cx="310" cy="190" rx="80" ry="52" class="outline"/>
+  <ellipse cx="340" cy="248" rx="108" ry="22" class="outline"/>
+  <circle cx="288" cy="155" r="12" class="beret-button"/>
+  <circle cx="288" cy="155" r="12" class="outline-thin"/>
+  <ellipse cx="340" cy="380" rx="75" ry="58" class="muzzle"/>
+  <path d="M328,355 Q340,348 352,355 L346,366 Q340,372 334,366 Z" class="nose"/>
+  <path d="M340,368 Q340,378 340,378" class="mouth"/>
+  <path d="M325,378 Q333,390 340,378" class="mouth"/>
+  <path d="M355,378 Q347,390 340,378" class="mouth"/>
+  <ellipse cx="284" cy="315" rx="36" ry="34" class="eye-white"/>
+  <ellipse cx="284" cy="315" rx="36" ry="34" class="outline"/>
+  <path d="M258,315 Q284,295 310,315" fill="#2a1a0e"/>
+  <circle cx="270" cy="306" r="7" class="eye-shine"/>
+  <circle cx="294" cy="300" r="4" class="eye-shine"/>
+  <ellipse cx="396" cy="315" rx="36" ry="34" class="eye-white"/>
+  <ellipse cx="396" cy="315" rx="36" ry="34" class="outline"/>
+  <path d="M370,315 Q396,295 422,315" fill="#2a1a0e"/>
+  <circle cx="382" cy="306" r="7" class="eye-shine"/>
+  <circle cx="406" cy="300" r="4" class="eye-shine"/>
+  <line x1="270" y1="365" x2="140" y2="350" class="whisker"/>
+  <line x1="270" y1="375" x2="138" y2="375" class="whisker"/>
+  <line x1="270" y1="383" x2="142" y2="398" class="whisker"/>
+  <line x1="410" y1="365" x2="540" y2="350" class="whisker"/>
+  <line x1="410" y1="375" x2="542" y2="375" class="whisker"/>
+  <line x1="410" y1="383" x2="538" y2="398" class="whisker"/>
+  <ellipse cx="220" cy="370" rx="28" ry="18" fill="#ffaaaa" opacity="0.45"/>
+  <ellipse cx="460" cy="370" rx="28" ry="18" fill="#ffaaaa" opacity="0.45"/>
+  <rect x="490" y="160" width="120" height="44" rx="12" fill="white" stroke="#2a1a0e" stroke-width="3"/>
+  <polygon points="500,204 486,222 520,204" fill="white" stroke="#2a1a0e" stroke-width="2.5" stroke-linejoin="round"/>
+  <polygon points="500,204 486,222 520,204" fill="white"/>
+  <text x="550" y="188" text-anchor="middle" font-family="Arial, sans-serif" font-weight="800" font-size="18" fill="#2a1a0e">POW!</text>
+</svg>
