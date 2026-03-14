@@ -61,6 +61,7 @@ export default function CharacterBuilder({ onSave, onClose, existing }: Props) {
   const [char, setChar] = useState<Character>({
     id: existing?.id || uuidv4(),
     name: existing?.name || '',
+    species: defaultSpecies,
     bodyShape: existing?.bodyShape || 'round',
     skinColor: existing?.skinColor || (defaultSpecies === 'human' ? '#ffcc99' : ANIMAL_BODY[defaultSpecies][0]),
     hairColor: existing?.hairColor || (defaultSpecies === 'human' ? '#1a1a1a' : ANIMAL_ACCENT[defaultSpecies][0]),
