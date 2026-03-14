@@ -1,26 +1,88 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-display: 'Bangers', cursive;
+  --font-body: 'Nunito', sans-serif;
+  --ink: #1a1a2e;
+  --paper: #fff8f0;
+  --accent: #ff6b35;
+  --accent2: #ffd23f;
+  --panel-border: 3px solid #1a1a2e;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  background-color: #fff8f0;
+  background-image: 
+    radial-gradient(circle at 1px 1px, #e8d8c0 1px, transparent 0);
+  background-size: 24px 24px;
 }
+
+.font-display { font-family: var(--font-display); }
+
+/* Comic panel style */
+.comic-panel {
+  border: 3px solid #1a1a2e;
+  box-shadow: 4px 4px 0 #1a1a2e;
+  border-radius: 4px;
+}
+
+/* Ink button style */
+.btn-ink {
+  border: 3px solid #1a1a2e;
+  box-shadow: 3px 3px 0 #1a1a2e;
+  transition: all 0.1s ease;
+  font-weight: 800;
+}
+.btn-ink:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #1a1a2e;
+}
+
+/* Speech bubble */
+.speech-bubble {
+  position: relative;
+  border: 3px solid #1a1a2e;
+  border-radius: 16px;
+  background: white;
+  padding: 8px 12px;
+  font-weight: 700;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -14px;
+  left: 16px;
+  border: 8px solid transparent;
+  border-top-color: #1a1a2e;
+}
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 17px;
+  border: 7px solid transparent;
+  border-top-color: white;
+  z-index: 1;
+}
+
+/* Animations */
+@keyframes pop-in {
+  0% { transform: scale(0.8); opacity: 0; }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop-in { animation: pop-in 0.3s ease forwards; }
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+.wiggle:hover { animation: wiggle 0.3s ease infinite; }
+
+/* Tab bar safe area for mobile */
+.tab-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
