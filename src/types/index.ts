@@ -5,13 +5,13 @@ export type CharacterSpecies = 'human' | 'cat' | 'dog' | 'rabbit' | 'bear' | 'fo
 export interface Character {
   id: string;
   name: string;
-  species: CharacterSpecies;   // NEW
+  species: CharacterSpecies;
   bodyShape: 'round' | 'square' | 'tall' | 'small';
-  skinColor: string;           // body color for animals
-  hairColor: string;           // accent color for animals
+  skinColor: string;
+  hairColor: string;
   outfitColor: string;
   eyeStyle: 'happy' | 'cool' | 'surprised' | 'sleepy';
-  accessory: 'none' | 'hat' | 'glasses' | 'cape' | 'crown';
+  accessory: 'none' | 'hat' | 'glasses' | 'cape' | 'crown' | 'mask' | 'bowtie' | 'scarf' | 'backpack' | 'umbrella';
 }
 
 export type BubbleType = 'speech' | 'shout' | 'thought' | 'whisper';

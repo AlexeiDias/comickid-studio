@@ -11,11 +11,51 @@ import BubblePicker from '@/components/editor/BubblePicker';
 import toast from 'react-hot-toast';
 import { v4 as uuidv4 } from 'uuid';
 
-const BG_COLORS = ['#ffffff','#fff8f0','#e8f4fd','#f0fdf4','#fef9c3','#fce7f3','#1a1a2e','#2d5016','#4a1a4a'];
-type ActiveTool = 'draw' | 'erase' | 'move';
-type ActivePanel = 'draw' | 'chars' | 'bubbles' | 'bg';
+// ── Background scenarios ────────────────────────────────────────────
+const BG_SCENARIOS = [
+  { label: 'White',    emoji: '⬜', color: '#ffffff', gradient: null },
+  { label: 'Cream',    emoji: '🟡', color: '#fff8f0', gradient: null },
+  { label: 'Sky',      emoji: '☀️', color: '#87ceeb', gradient: 'linear-gradient(180deg,#87ceeb 0%,#e0f4ff 100%)' },
+  { label: 'Night',    emoji: '🌙', color: '#1a1a2e', gradient: 'linear-gradient(180deg,#0d0d1a 0%,#1a1a3e 100%)' },
+  { label: 'Beach',    emoji: '🏖️', color: '#f4e4a0', gradient: 'linear-gradient(180deg,#87ceeb 50%,#f4e4a0 50%)' },
+  { label: 'Sunset',   emoji: '🌅', color: '#ff7043', gradient: 'linear-gradient(180deg,#ff7043 0%,#ffd54f 60%,#e0c080 100%)' },
+  { label: 'City',     emoji: '🏙️', color: '#8ba0b0', gradient: 'linear-gradient(180deg,#8ba0b0 0%,#b0c0cc 60%,#a0b090 100%)' },
+  { label: 'Park',     emoji: '🌳', color: '#90c060', gradient: 'linear-gradient(180deg,#87ceeb 40%,#90c060 40%)' },
+  { label: 'Farm',     emoji: '🌾', color: '#d4b060', gradient: 'linear-gradient(180deg,#87ceeb 35%,#d4b060 35%)' },
+  { label: 'Space',    emoji: '🚀', color: '#0d0d1a', gradient: 'linear-gradient(180deg,#0d0d1a 0%,#1a0d2e 100%)' },
+  { label: 'Underwater',emoji:'🐠', color: '#0077b6', gradient: 'linear-gradient(180deg,#0077b6 0%,#00b4d8 100%)' },
+  { label: 'Snow',     emoji: '❄️', color: '#e8f4fd', gradient: 'linear-gradient(180deg,#b0d4f0 30%,#e8f4fd 30%)' },
+];
 
+const BG_COLORS = ['#ffffff','#fff8f0','#e8f4fd','#f0fdf4','#fef9c3','#fce7f3','#1a1a2e','#2d5016','#4a1a4a'];
+
+// ── Shape tools ─────────────────────────────────────────────────────
+type ShapeTool = 'rect' | 'circle' | 'triangle' | 'star' | 'oval';
+const SHAPES: Array<{ key: ShapeTool; label: string; emoji: string }> = [
+  { key: 'rect',     label: 'Square',   emoji: '⬜' },
+  { key: 'circle',   label: 'Circle',   emoji: '⭕' },
+  { key: 'triangle', label: 'Triangle', emoji: '🔺' },
+  { key: 'star',     label: 'Star',     emoji: '⭐' },
+  { key: 'oval',     label: 'Oval',     emoji: '🫧' },
+];
+
+type ActiveTool = 'draw' | 'erase' | 'move' | 'shape';
+type ActivePanel = 'draw' | 'chars' | 'bubbles' | 'bg';
 interface SelectedItem { type: 'char' | 'bubble'; id: string; }
+
+function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  const spikes = 5, outerR = r, innerR = r * 0.45;
+  let rot = (Math.PI / 2) * 3;
+  const step = Math.PI / spikes;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerR);
+  for (let i = 0; i < spikes; i++) {
+    ctx.lineTo(cx + Math.cos(rot) * outerR, cy + Math.sin(rot) * outerR); rot += step;
+    ctx.lineTo(cx + Math.cos(rot) * innerR, cy + Math.sin(rot) * innerR); rot += step;
+  }
+  ctx.lineTo(cx, cy - outerR);
+  ctx.closePath();
+}
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,26 +67,27 @@ export default function EditorPage() {
   const [comic, setComic]             = useState<Comic | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [tool, setTool]               = useState<ActiveTool>('draw');
+  const [shapeTool, setShapeTool]     = useState<ShapeTool>('rect');
   const [penColor, setPenColor]       = useState('#1a1a2e');
   const [penSize, setPenSize]         = useState(4);
+  const [fillShape, setFillShape]     = useState(false);
   const [isDrawing, setIsDrawing]     = useState(false);
+  const [shapeStart, setShapeStart]   = useState<{x:number,y:number}|null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);  // ✅ FIX 1
   const [showCharBuilder, setShowCharBuilder]   = useState(false);
   const [showBubblePicker, setShowBubblePicker] = useState(false);
   const [showBot, setShowBot]   = useState(false);
   const [saving, setSaving]     = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>('draw');
+  const [selected, setSelected]       = useState<SelectedItem | null>(null);
 
-  // ── Selection is SEPARATE from dragging ──────────────────────────
-  // selected: which item shows controls in the bottom panel (persists until user taps empty space)
-  // dragging: which item is currently being moved (only active during pointer down+move)
-  const [selected, setSelected]           = useState<SelectedItem | null>(null);
-  const isDraggingRef                     = useRef(false);
-  const draggingIdRef                     = useRef<string | null>(null);
-  const draggingTypeRef                   = useRef<'char' | 'bubble' | null>(null);
-  const dragOffset                        = useRef({ x: 0, y: 0 });
-  const lastPos                           = useRef<{ x: number; y: number } | null>(null);
-  // keep comic in a ref so drag move handler always has fresh data
-  const comicRef = useRef<Comic | null>(null);
+  const isDraggingRef    = useRef(false);
+  const draggingIdRef    = useRef<string | null>(null);
+  const draggingTypeRef  = useRef<'char' | 'bubble' | null>(null);
+  const dragOffset       = useRef({ x: 0, y: 0 });
+  const lastPos          = useRef<{ x: number; y: number } | null>(null);
+  const snapshotRef      = useRef<ImageData | null>(null); // for shape preview
+  const comicRef         = useRef<Comic | null>(null);
   comicRef.current = comic;
 
   useEffect(() => { if (id && id !== 'new') loadComic(); }, [id]);
@@ -90,332 +131,371 @@ export default function EditorPage() {
       if (canvasRef.current && pages[currentPage]) {
         pages[currentPage] = { ...pages[currentPage], drawingData: canvasRef.current.toDataURL() };
       }
-      await updateComic(c.id, { pages, pageCount: c.pageCount, characters: c.characters });
+      await updateComic(c.id, { pages, pageCount: c.pageCount, characters: c.characters, title: c.title });
       setComic({ ...c, pages });
       toast.success('Saved! 💾');
     } catch (e) { console.error(e); toast.error('Save failed'); }
     setSaving(false);
   }
 
-  // ── Drawing ───────────────────────────────────────────────────────
+  // ✅ FIX 1: Title editing
+  async function handleTitleSave(newTitle: string) {
+    if (!comic || !newTitle.trim()) return;
+    const updated = { ...comic, title: newTitle.trim() };
+    setComic(updated);
+    setEditingTitle(false);
+    await updateComic(comic.id, { title: newTitle.trim() });
+  }
+
+  // ── Canvas helpers ────────────────────────────────────────────────
   function getCanvasPos(e: React.TouchEvent | React.MouseEvent, canvas: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
     const src  = 'touches' in e ? e.touches[0] : (e as React.MouseEvent);
     return {
-      x: (src.clientX - rect.left) * (canvas.width  / rect.width),
+      x: (src.clientX - rect.left) * (canvas.width / rect.width),
       y: (src.clientY - rect.top)  * (canvas.height / rect.height),
     };
   }
+
+  // ✅ FIX 6: True eraser using destination-out composite operation
+  function applyErase(ctx: CanvasRenderingContext2D, from: {x:number,y:number}, to: {x:number,y:number}) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.lineWidth   = penSize * 5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function startDraw(e: React.TouchEvent | React.MouseEvent) {
     if (tool === 'move' || !canvasRef.current) return;
-    e.preventDefault(); setIsDrawing(true);
-    lastPos.current = getCanvasPos(e, canvasRef.current);
+    e.preventDefault();
+    const pos = getCanvasPos(e, canvasRef.current);
+    if (tool === 'shape') {
+      const ctx = canvasRef.current.getContext('2d')!;
+      snapshotRef.current = ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+      setShapeStart(pos);
+    }
+    setIsDrawing(true);
+    lastPos.current = pos;
   }
+
   function draw(e: React.TouchEvent | React.MouseEvent) {
     if (!isDrawing || tool === 'move' || !canvasRef.current || !lastPos.current) return;
     e.preventDefault();
     const ctx = canvasRef.current.getContext('2d')!;
     const pos = getCanvasPos(e, canvasRef.current);
-    ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y);
-    ctx.strokeStyle = tool === 'erase' ? (comicRef.current?.pages[currentPage]?.backgroundColor || '#ffffff') : penColor;
-    ctx.lineWidth   = tool === 'erase' ? penSize * 5 : penSize;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+
+    if (tool === 'erase') {
+      applyErase(ctx, lastPos.current, pos);
+      lastPos.current = pos;
+      return;
+    }
+
+    if (tool === 'shape' && shapeStart && snapshotRef.current) {
+      // Restore snapshot then draw preview
+      ctx.putImageData(snapshotRef.current, 0, 0);
+      const x = Math.min(shapeStart.x, pos.x);
+      const y = Math.min(shapeStart.y, pos.y);
+      const w = Math.abs(pos.x - shapeStart.x);
+      const h = Math.abs(pos.y - shapeStart.y);
+      ctx.strokeStyle = penColor;
+      ctx.fillStyle   = penColor;
+      ctx.lineWidth   = penSize;
+      ctx.lineCap     = 'round';
+      if (shapeTool === 'rect') {
+        if (fillShape) ctx.fillRect(x, y, w, h);
+        else ctx.strokeRect(x, y, w, h);
+      } else if (shapeTool === 'circle') {
+        const r = Math.min(w, h) / 2;
+        ctx.beginPath(); ctx.arc(x + r, y + r, r, 0, Math.PI * 2);
+        if (fillShape) ctx.fill(); else ctx.stroke();
+      } else if (shapeTool === 'oval') {
+        ctx.beginPath();
+        ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI * 2);
+        if (fillShape) ctx.fill(); else ctx.stroke();
+      } else if (shapeTool === 'triangle') {
+        ctx.beginPath();
+        ctx.moveTo(x + w/2, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.closePath();
+        if (fillShape) ctx.fill(); else ctx.stroke();
+      } else if (shapeTool === 'star') {
+        const r = Math.min(w, h) / 2;
+        drawStar(ctx, x + w/2, y + h/2, r);
+        if (fillShape) ctx.fill(); else ctx.stroke();
+      }
+      lastPos.current = pos;
+      return;
+    }
+
+    // Freehand draw
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = penColor;
+    ctx.lineWidth   = penSize;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.stroke();
     lastPos.current = pos;
   }
-  function endDraw() { setIsDrawing(false); lastPos.current = null; }
 
-  // ── Drag (move tool) ──────────────────────────────────────────────
-  // Called from the item itself on pointer down
-  function startItemDrag(
-    e: React.TouchEvent | React.MouseEvent,
-    type: 'char' | 'bubble',
-    itemId: string,
-    currentX: number,
-    currentY: number
-  ) {
+  function endDraw() {
+    setIsDrawing(false);
+    setShapeStart(null);
+    snapshotRef.current = null;
+    lastPos.current = null;
+  }
+
+  // ── Drag ─────────────────────────────────────────────────────────
+  function startItemDrag(e: React.TouchEvent|React.MouseEvent, type:'char'|'bubble', itemId:string, cx:number, cy:number) {
     e.stopPropagation();
-    // Select this item (persists)
     setSelected({ type, id: itemId });
-    // Start drag tracking
-    isDraggingRef.current    = true;
-    draggingIdRef.current    = itemId;
-    draggingTypeRef.current  = type;
+    isDraggingRef.current   = true;
+    draggingIdRef.current   = itemId;
+    draggingTypeRef.current = type;
     const src  = 'touches' in e ? e.touches[0] : (e as React.MouseEvent);
     const area = canvasAreaRef.current!.getBoundingClientRect();
-    dragOffset.current = {
-      x: src.clientX - area.left - (currentX / 100) * area.width,
-      y: src.clientY - area.top  - (currentY / 100) * area.height,
-    };
+    dragOffset.current = { x: src.clientX - area.left - (cx/100)*area.width, y: src.clientY - area.top - (cy/100)*area.height };
   }
 
-  // Called on the canvas AREA during pointer move
-  function onAreaPointerMove(e: React.TouchEvent | React.MouseEvent) {
+  function onAreaPointerMove(e: React.TouchEvent|React.MouseEvent) {
     if (!isDraggingRef.current || !draggingIdRef.current || !comicRef.current) return;
     const src  = 'touches' in e ? e.touches[0] : (e as React.MouseEvent);
-    const area = canvasAreaRef.current;
-    if (!area) return;
+    const area = canvasAreaRef.current; if (!area) return;
     const rect = area.getBoundingClientRect();
-    const x = Math.max(2, Math.min(95, ((src.clientX - rect.left - dragOffset.current.x) / rect.width)  * 100));
-    const y = Math.max(2, Math.min(92, ((src.clientY - rect.top  - dragOffset.current.y) / rect.height) * 100));
-
+    const x = Math.max(2,Math.min(95,((src.clientX-rect.left-dragOffset.current.x)/rect.width)*100));
+    const y = Math.max(2,Math.min(92,((src.clientY-rect.top -dragOffset.current.y)/rect.height)*100));
     const c = comicRef.current;
-    if (draggingTypeRef.current === 'char') {
-      setComic({ ...c, pages: c.pages.map((p, i) => i !== currentPage ? p :
-        { ...p, characters: p.characters.map(ch => ch.characterId === draggingIdRef.current ? { ...ch, x, y } : ch) }) });
+    if (draggingTypeRef.current==='char') {
+      setComic({...c,pages:c.pages.map((p,i)=>i!==currentPage?p:{...p,characters:p.characters.map(ch=>ch.characterId===draggingIdRef.current?{...ch,x,y}:ch)})});
     } else {
-      setComic({ ...c, pages: c.pages.map((p, i) => i !== currentPage ? p :
-        { ...p, textBubbles: p.textBubbles.map(b => b.id === draggingIdRef.current ? { ...b, x, y } : b) }) });
+      setComic({...c,pages:c.pages.map((p,i)=>i!==currentPage?p:{...p,textBubbles:p.textBubbles.map(b=>b.id===draggingIdRef.current?{...b,x,y}:b)})});
     }
   }
 
-  // Called on the canvas AREA on pointer UP — only stops dragging, does NOT clear selection
-  function onAreaPointerUp() {
-    isDraggingRef.current   = false;
-    draggingIdRef.current   = null;
-    draggingTypeRef.current = null;
-  }
-
-  // Tap on empty canvas area in move mode → deselect
-  function onAreaClick(e: React.MouseEvent | React.TouchEvent) {
-    if ((e.target as HTMLElement) === canvasAreaRef.current || (e.target as HTMLElement) === canvasRef.current) {
-      setSelected(null);
-    }
+  function onAreaPointerUp() { isDraggingRef.current=false; draggingIdRef.current=null; draggingTypeRef.current=null; }
+  function onAreaClick(e: React.MouseEvent|React.TouchEvent) {
+    if ((e.target as HTMLElement)===canvasAreaRef.current||(e.target as HTMLElement)===canvasRef.current) setSelected(null);
   }
 
   // ── Update helpers ────────────────────────────────────────────────
-  function updateChar(charId: string, patch: Partial<PageCharacter>) {
+  function updateChar(charId:string, patch:Partial<PageCharacter>) {
     if (!comic) return;
-    setComic({ ...comic, pages: comic.pages.map((p, i) => i !== currentPage ? p :
-      { ...p, characters: p.characters.map(c => c.characterId === charId ? { ...c, ...patch } : c) }) });
+    setComic({...comic,pages:comic.pages.map((p,i)=>i!==currentPage?p:{...p,characters:p.characters.map(c=>c.characterId===charId?{...c,...patch}:c)})});
   }
-  function updateBubble(bubbleId: string, patch: Partial<TextBubble>) {
+  function updateBubble(bubbleId:string, patch:Partial<TextBubble>) {
     if (!comic) return;
-    setComic({ ...comic, pages: comic.pages.map((p, i) => i !== currentPage ? p :
-      { ...p, textBubbles: p.textBubbles.map(b => b.id === bubbleId ? { ...b, ...patch } : b) }) });
+    setComic({...comic,pages:comic.pages.map((p,i)=>i!==currentPage?p:{...p,textBubbles:p.textBubbles.map(b=>b.id===bubbleId?{...b,...patch}:b)})});
   }
-  function removeChar(charId: string) {
+  function removeChar(charId:string) {
     if (!comic) return;
-    setComic({ ...comic, pages: comic.pages.map((p, i) => i !== currentPage ? p :
-      { ...p, characters: p.characters.filter(c => c.characterId !== charId) }) });
-    if (selected?.id === charId) setSelected(null);
+    setComic({...comic,pages:comic.pages.map((p,i)=>i!==currentPage?p:{...p,characters:p.characters.filter(c=>c.characterId!==charId)})});
+    if (selected?.id===charId) setSelected(null);
   }
-  function removeBubble(bubbleId: string) {
+  function removeBubble(bubbleId:string) {
     if (!comic) return;
-    setComic({ ...comic, pages: comic.pages.map((p, i) => i !== currentPage ? p :
-      { ...p, textBubbles: p.textBubbles.filter(b => b.id !== bubbleId) }) });
-    if (selected?.id === bubbleId) setSelected(null);
+    setComic({...comic,pages:comic.pages.map((p,i)=>i!==currentPage?p:{...p,textBubbles:p.textBubbles.filter(b=>b.id!==bubbleId)})});
+    if (selected?.id===bubbleId) setSelected(null);
   }
 
   function handleAddChar(char: Character) {
     if (!comic) return;
-    const existingIdx = comic.characters.findIndex(c => c.id === char.id);
+    const existingIdx = comic.characters.findIndex(c=>c.id===char.id);
     let chars = [...comic.characters];
-    if (existingIdx >= 0) chars[existingIdx] = char; else chars = [...chars, char];
-    const pages = comic.pages.map((p, i) => {
-      if (i !== currentPage) return p;
-      if (p.characters.find(c => c.characterId === char.id)) return p;
-      return { ...p, characters: [...p.characters, { characterId: char.id, x: 40, y: 40, size: 70, flipped: false, pose: 'standing' as CharacterPose }] };
+    if (existingIdx>=0) chars[existingIdx]=char; else chars=[...chars,char];
+    const pages = comic.pages.map((p,i)=>{
+      if (i!==currentPage) return p;
+      if (p.characters.find(c=>c.characterId===char.id)) return p;
+      return {...p,characters:[...p.characters,{characterId:char.id,x:40,y:40,size:70,flipped:false,pose:'standing' as CharacterPose}]};
     });
-    setComic({ ...comic, characters: chars, pages });
+    setComic({...comic,characters:chars,pages});
     setShowCharBuilder(false);
     toast.success(`${char.name} added! 🎉`);
   }
 
-  function handleAddBubble(type: BubbleType, text: string) {
+  function handleAddBubble(type:BubbleType, text:string) {
     if (!comic) return;
-    const bubble: TextBubble = { id: uuidv4(), type, text, x: 10, y: 10, width: 45, fontSize: 13 };
-    const pages = comic.pages.map((p, i) => i === currentPage ? { ...p, textBubbles: [...p.textBubbles, bubble] } : p);
-    setComic({ ...comic, pages });
+    const bubble:TextBubble={id:uuidv4(),type,text,x:10,y:10,width:45,fontSize:13};
+    const pages=comic.pages.map((p,i)=>i===currentPage?{...p,textBubbles:[...p.textBubbles,bubble]}:p);
+    setComic({...comic,pages});
     setShowBubblePicker(false);
     toast.success('Bubble added! 💬');
   }
 
-  const page      = comic?.pages[currentPage];
-  const selChar   = selected?.type === 'char'   ? page?.characters.find(c => c.characterId === selected.id) : null;
-  const selBubble = selected?.type === 'bubble' ? page?.textBubbles.find(b => b.id === selected.id)        : null;
-  const showControls = tool === 'move' && selected && (selChar || selBubble);
+  const page=comic?.pages[currentPage];
+  const selChar=selected?.type==='char'?page?.characters.find(c=>c.characterId===selected.id):null;
+  const selBubble=selected?.type==='bubble'?page?.textBubbles.find(b=>b.id===selected.id):null;
+  const showControls=tool==='move'&&selected&&(selChar||selBubble);
+
+  // Current background style
+  const currentBg = BG_SCENARIOS.find(s=>s.color===page?.backgroundColor);
+  const bgStyle = currentBg?.gradient
+    ? { background: currentBg.gradient }
+    : { backgroundColor: page?.backgroundColor||'#fff' };
 
   return (
     <div className="flex flex-col h-screen bg-amber-50 overflow-hidden">
 
-      {/* Header */}
+      {/* ── Header with editable title ── */}
       <div className="bg-amber-400 border-b-4 border-amber-900 px-4 pt-10 pb-2 flex items-center justify-between shrink-0">
-        <button onClick={() => router.push('/library')} className="font-extrabold text-amber-900 text-xl px-1">←</button>
-        <h1 className="font-display text-xl text-amber-900 truncate max-w-[150px]">{comic?.title || '...'}</h1>
-        <button onClick={() => comic && saveComic(comic)}
+        <button onClick={()=>router.push('/library')} className="font-extrabold text-amber-900 text-xl px-1">←</button>
+
+        {/* ✅ FIX 1: Tap title to edit */}
+        {editingTitle ? (
+          <input
+            autoFocus
+            defaultValue={comic?.title}
+            className="font-display text-xl text-amber-900 bg-white/80 rounded-lg px-2 py-0.5 outline-none border-2 border-amber-900 max-w-[160px]"
+            onBlur={e=>handleTitleSave(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter') handleTitleSave((e.target as HTMLInputElement).value); }}
+          />
+        ) : (
+          <button onClick={()=>setEditingTitle(true)} className="font-display text-xl text-amber-900 truncate max-w-[150px] flex items-center gap-1">
+            {comic?.title||'...'}
+            <span className="text-sm">✏️</span>
+          </button>
+        )}
+
+        <button onClick={()=>comic&&saveComic(comic)}
           className="btn-ink bg-white text-amber-900 px-3 py-1 rounded-lg text-sm font-extrabold">
-          {saving ? '⏳' : '💾 Save'}
+          {saving?'⏳':'💾 Save'}
         </button>
       </div>
 
       {/* Page tabs */}
       <div className="flex overflow-x-auto gap-2 px-3 py-2 bg-white border-b-2 border-amber-200 shrink-0">
-        {comic?.pages.map((p, i) => (
-          <button key={p.id} onClick={() => { setCurrentPage(i); setSelected(null); }}
-            className={`shrink-0 w-10 h-10 rounded-lg font-extrabold text-sm btn-ink ${i === currentPage ? 'bg-amber-400 text-amber-900' : 'bg-white text-gray-600'}`}>
-            {i + 1}
+        {comic?.pages.map((p,i)=>(
+          <button key={p.id} onClick={()=>{setCurrentPage(i);setSelected(null);}}
+            className={`shrink-0 w-10 h-10 rounded-lg font-extrabold text-sm btn-ink ${i===currentPage?'bg-amber-400 text-amber-900':'bg-white text-gray-600'}`}>
+            {i+1}
           </button>
         ))}
-        <button onClick={() => { if (comic) { const c = addNewPage(comic); setComic(c); }}}
+        <button onClick={()=>{if(comic){const c=addNewPage(comic);setComic(c);}}}
           className="shrink-0 w-10 h-10 rounded-lg btn-ink bg-orange-100 text-orange-700 font-extrabold text-xl">+</button>
       </div>
 
       {/* Canvas area */}
-      <div
-        ref={canvasAreaRef}
-        className="flex-1 relative overflow-hidden"
-        style={{ backgroundColor: page?.backgroundColor || '#fff', cursor: tool === 'move' ? 'default' : 'crosshair' }}
-        onMouseMove={onAreaPointerMove}
-        onMouseUp={onAreaPointerUp}
-        onTouchMove={onAreaPointerMove}
-        onTouchEnd={onAreaPointerUp}
+      <div ref={canvasAreaRef} className="flex-1 relative overflow-hidden"
+        style={{ ...bgStyle, cursor: tool==='move'?'default':'crosshair' }}
+        onMouseMove={tool==='move'?onAreaPointerMove:undefined}
+        onMouseUp={tool==='move'?onAreaPointerUp:undefined}
+        onTouchMove={tool==='move'?onAreaPointerMove:undefined}
+        onTouchEnd={tool==='move'?onAreaPointerUp:undefined}
         onClick={onAreaClick}
       >
-        {/* Drawing canvas */}
+        {/* ✅ FIX 6: Canvas is transparent — background shows through, eraser truly erases */}
         <canvas ref={canvasRef} width={800} height={600}
           className="absolute inset-0 w-full h-full"
-          style={{ touchAction: 'none', pointerEvents: tool === 'move' ? 'none' : 'auto' }}
+          style={{ touchAction:'none', pointerEvents:tool==='move'?'none':'auto', backgroundColor:'transparent' }}
           onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
           onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
         />
 
         {/* Characters */}
-        {page?.characters.map(pc => {
-          const char = comic?.characters.find(c => c.id === pc.characterId);
+        {page?.characters.map(pc=>{
+          const char=comic?.characters.find(c=>c.id===pc.characterId);
           if (!char) return null;
-          const isSelected = selected?.type === 'char' && selected.id === pc.characterId;
+          const isSelected=selected?.type==='char'&&selected.id===pc.characterId;
           return (
-            <div key={pc.characterId}
-              className="absolute select-none"
-              style={{
-                left: `${pc.x}%`, top: `${pc.y}%`,
-                transform: `translate(-50%,-50%) scaleX(${pc.flipped ? -1 : 1})`,
-                cursor: tool === 'move' ? 'grab' : 'default',
-                zIndex: isSelected ? 50 : 10,
-                outline: isSelected && tool === 'move' ? '3px dashed #f97316' : 'none',
-                outlineOffset: '6px', borderRadius: '4px',
-              }}
-              onMouseDown={tool === 'move' ? (e) => startItemDrag(e, 'char', pc.characterId, pc.x, pc.y) : undefined}
-              onTouchStart={tool === 'move' ? (e) => startItemDrag(e, 'char', pc.characterId, pc.x, pc.y) : undefined}
+            <div key={pc.characterId} className="absolute select-none"
+              style={{ left:`${pc.x}%`,top:`${pc.y}%`,transform:`translate(-50%,-50%) scaleX(${pc.flipped?-1:1})`,
+                cursor:tool==='move'?'grab':'default', zIndex:isSelected?50:10,
+                outline:isSelected&&tool==='move'?'3px dashed #f97316':'none', outlineOffset:'6px', borderRadius:'4px' }}
+              onMouseDown={tool==='move'?(e)=>startItemDrag(e,'char',pc.characterId,pc.x,pc.y):undefined}
+              onTouchStart={tool==='move'?(e)=>startItemDrag(e,'char',pc.characterId,pc.x,pc.y):undefined}
             >
-              <CharacterSVG character={char} pose={pc.pose || 'standing'} size={pc.size || 70}/>
-              {isSelected && tool === 'move' && (
-                <button
-                  className="absolute -top-3 -right-3 w-7 h-7 bg-red-500 text-white rounded-full text-base font-bold z-30 flex items-center justify-center shadow-md"
-                  onMouseDown={e => { e.stopPropagation(); removeChar(pc.characterId); }}
-                  onTouchStart={e => { e.stopPropagation(); removeChar(pc.characterId); }}
-                >×</button>
+              <CharacterSVG character={char} pose={pc.pose||'standing'} size={pc.size||70}/>
+              {isSelected&&tool==='move'&&(
+                <button className="absolute -top-3 -right-3 w-7 h-7 bg-red-500 text-white rounded-full text-base font-bold z-30 flex items-center justify-center shadow-md"
+                  onMouseDown={e=>{e.stopPropagation();removeChar(pc.characterId);}}
+                  onTouchStart={e=>{e.stopPropagation();removeChar(pc.characterId);}}>×</button>
               )}
             </div>
           );
         })}
 
-        {/* Text bubbles */}
-        {page?.textBubbles.map(bubble => {
-          const isSelected = selected?.type === 'bubble' && selected.id === bubble.id;
-          const fs = bubble.fontSize || 13;
+        {/* Bubbles */}
+        {page?.textBubbles.map(bubble=>{
+          const isSelected=selected?.type==='bubble'&&selected.id===bubble.id;
+          const fs=bubble.fontSize||13;
           return (
-            <div key={bubble.id}
-              className="absolute select-none"
-              style={{
-                left: `${bubble.x}%`, top: `${bubble.y}%`,
-                maxWidth: `${bubble.width}%`,
-                cursor: tool === 'move' ? 'grab' : 'default',
-                zIndex: isSelected ? 50 : 20,
-              }}
-              onMouseDown={tool === 'move' ? (e) => startItemDrag(e, 'bubble', bubble.id, bubble.x, bubble.y) : undefined}
-              onTouchStart={tool === 'move' ? (e) => startItemDrag(e, 'bubble', bubble.id, bubble.x, bubble.y) : undefined}
+            <div key={bubble.id} className="absolute select-none"
+              style={{ left:`${bubble.x}%`,top:`${bubble.y}%`,maxWidth:`${bubble.width}%`,
+                cursor:tool==='move'?'grab':'default', zIndex:isSelected?50:20 }}
+              onMouseDown={tool==='move'?(e)=>startItemDrag(e,'bubble',bubble.id,bubble.x,bubble.y):undefined}
+              onTouchStart={tool==='move'?(e)=>startItemDrag(e,'bubble',bubble.id,bubble.x,bubble.y):undefined}
             >
               <div className={`relative px-3 py-2 font-bold bg-white border-2 border-gray-900
-                ${bubble.type === 'shout'   ? 'bg-yellow-300 font-display' : ''}
-                ${bubble.type === 'thought' ? 'rounded-3xl border-dotted' : 'rounded-xl'}
-                ${bubble.type === 'whisper' ? 'border-dashed opacity-80'  : ''}
-                ${isSelected && tool === 'move' ? 'ring-2 ring-orange-500 ring-offset-2' : ''}
-              `} style={{ fontSize: `${fs}px`, lineHeight: 1.3 }}>
+                ${bubble.type==='shout'?'bg-yellow-300 font-display':''}
+                ${bubble.type==='thought'?'rounded-3xl border-dotted':'rounded-xl'}
+                ${bubble.type==='whisper'?'border-dashed opacity-80':''}
+                ${isSelected&&tool==='move'?'ring-2 ring-orange-500 ring-offset-2':''}
+              `} style={{fontSize:`${fs}px`,lineHeight:1.3}}>
                 {bubble.text}
-                {(bubble.type === 'speech' || bubble.type === 'whisper') && (
+                {(bubble.type==='speech'||bubble.type==='whisper')&&(
                   <div className="absolute -bottom-2 left-4 w-0 h-0"
-                    style={{ borderLeft:'7px solid transparent', borderRight:'7px solid transparent', borderTop:'8px solid #1a1a2e' }}/>
+                    style={{borderLeft:'7px solid transparent',borderRight:'7px solid transparent',borderTop:'8px solid #1a1a2e'}}/>
                 )}
-                {bubble.type === 'shout' && (
+                {bubble.type==='shout'&&(
                   <div className="absolute -bottom-2 left-4 w-0 h-0"
-                    style={{ borderLeft:'6px solid transparent', borderRight:'6px solid transparent', borderTop:'7px solid #1a1a2e' }}/>
+                    style={{borderLeft:'6px solid transparent',borderRight:'6px solid transparent',borderTop:'7px solid #1a1a2e'}}/>
                 )}
               </div>
-              {isSelected && tool === 'move' && (
-                <button
-                  className="absolute -top-3 -right-3 w-7 h-7 bg-red-500 text-white rounded-full text-base font-bold z-30 flex items-center justify-center shadow-md"
-                  onMouseDown={e => { e.stopPropagation(); removeBubble(bubble.id); }}
-                  onTouchStart={e => { e.stopPropagation(); removeBubble(bubble.id); }}
-                >×</button>
+              {isSelected&&tool==='move'&&(
+                <button className="absolute -top-3 -right-3 w-7 h-7 bg-red-500 text-white rounded-full text-base font-bold z-30 flex items-center justify-center shadow-md"
+                  onMouseDown={e=>{e.stopPropagation();removeBubble(bubble.id);}}
+                  onTouchStart={e=>{e.stopPropagation();removeBubble(bubble.id);}}>×</button>
               )}
             </div>
           );
         })}
 
-        {/* Sound effects */}
-        {page?.soundEffects.map((sfx, i) => (
-          <div key={i} className="absolute font-display text-2xl pointer-events-none"
-            style={{ left:`${sfx.x}%`, top:`${sfx.y}%`, color:sfx.color, transform:'rotate(-10deg)', zIndex:15 }}>
-            {sfx.text}
-          </div>
-        ))}
-
-        {/* Move hint when nothing selected */}
-        {tool === 'move' && !selected && (
+        {/* Move hints */}
+        {tool==='move'&&!selected&&(
           <div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none z-50">
-            <div className="bg-black/60 text-white text-xs font-bold px-3 py-1 rounded-full">
-              ✋ Tap a character or bubble to select it
-            </div>
+            <div className="bg-black/60 text-white text-xs font-bold px-3 py-1 rounded-full">✋ Tap a character or bubble to select</div>
           </div>
         )}
-        {tool === 'move' && selected && (
+        {tool==='move'&&selected&&(
           <div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none z-50">
-            <div className="bg-orange-500/90 text-white text-xs font-bold px-3 py-1 rounded-full">
-              ✅ Selected — use controls below • drag to move • tap empty area to deselect
-            </div>
+            <div className="bg-orange-500/90 text-white text-xs font-bold px-3 py-1 rounded-full">✅ Selected — use controls below • drag to move</div>
           </div>
         )}
       </div>
 
-      {/* ── Selected item controls — always visible when item is selected ── */}
-      {showControls && (
-        <div className="bg-purple-50 border-t-2 border-purple-300 px-4 py-3 shrink-0"
-          // stop clicks here from bubbling up to the canvas area (which would deselect)
-          onClick={e => e.stopPropagation()}>
-          {selChar && (() => {
-            const char = comic?.characters.find(c => c.id === selChar.characterId);
+      {/* ── Selected item controls ── */}
+      {showControls&&(
+        <div className="bg-purple-50 border-t-2 border-purple-300 px-4 py-3 shrink-0" onClick={e=>e.stopPropagation()}>
+          {selChar&&(()=>{
+            const char=comic?.characters.find(c=>c.id===selChar.characterId);
             return (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="font-extrabold text-purple-900 text-sm">🦸 {char?.name} — controls</p>
-                  <button onClick={() => setSelected(null)} className="text-purple-400 text-lg font-bold">✕</button>
+                  <button onClick={()=>setSelected(null)} className="text-purple-400 text-lg font-bold">✕</button>
                 </div>
-                {/* Size */}
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-3 mb-2">
                   <span className="text-xs font-extrabold text-purple-700 w-10">Size</span>
-                  <input type="range" min="30" max="160" step="5"
-                    value={selChar.size || 70}
-                    onChange={e => updateChar(selChar.characterId, { size: +e.target.value })}
-                    className="flex-1" />
-                  <span className="text-xs font-bold text-purple-600 w-10 text-right">{selChar.size || 70}px</span>
+                  <input type="range" min="30" max="160" step="5" value={selChar.size||70}
+                    onChange={e=>updateChar(selChar.characterId,{size:+e.target.value})} className="flex-1"/>
+                  <span className="text-xs font-bold text-purple-600 w-10 text-right">{selChar.size||70}px</span>
                 </div>
-                {/* Flip */}
-                <div className="flex items-center gap-2 mb-3">
-                  <button onClick={() => updateChar(selChar.characterId, { flipped: !selChar.flipped })}
-                    className={`btn-ink px-4 py-2 rounded-xl text-sm font-bold ${selChar.flipped ? 'bg-purple-400 text-purple-900' : 'bg-white text-gray-700'}`}>
-                    ↔ Flip {selChar.flipped ? '(ON)' : '(OFF)'}
+                <div className="flex items-center gap-2 mb-2">
+                  <button onClick={()=>updateChar(selChar.characterId,{flipped:!selChar.flipped})}
+                    className={`btn-ink px-4 py-2 rounded-xl text-sm font-bold ${selChar.flipped?'bg-purple-400 text-purple-900':'bg-white text-gray-700'}`}>
+                    ↔ Flip {selChar.flipped?'(ON)':'(OFF)'}
                   </button>
                 </div>
-                {/* Pose */}
                 <p className="text-xs font-extrabold text-purple-700 mb-1">Pose</p>
                 <div className="flex gap-1 flex-wrap">
-                  {POSES.map(p => (
-                    <button key={p.key}
-                      onClick={() => updateChar(selChar.characterId, { pose: p.key })}
-                      className={`btn-ink px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${
-                        (selChar.pose || 'standing') === p.key ? 'bg-purple-400 text-purple-900' : 'bg-white text-gray-600'
-                      }`}>
+                  {POSES.map(p=>(
+                    <button key={p.key} onClick={()=>updateChar(selChar.characterId,{pose:p.key})}
+                      className={`btn-ink px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${(selChar.pose||'standing')===p.key?'bg-purple-400 text-purple-900':'bg-white text-gray-600'}`}>
                       {p.emoji} {p.label}
                     </button>
                   ))}
@@ -423,30 +503,23 @@ export default function EditorPage() {
               </div>
             );
           })()}
-
-          {selBubble && (
+          {selBubble&&(
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="font-extrabold text-purple-900 text-sm">💬 Bubble — controls</p>
-                <button onClick={() => setSelected(null)} className="text-purple-400 text-lg font-bold">✕</button>
+                <button onClick={()=>setSelected(null)} className="text-purple-400 text-lg font-bold">✕</button>
               </div>
-              {/* Font size */}
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-2">
                 <span className="text-xs font-extrabold text-purple-700 w-16">Text size</span>
-                <input type="range" min="9" max="30" step="1"
-                  value={selBubble.fontSize || 13}
-                  onChange={e => updateBubble(selBubble.id, { fontSize: +e.target.value })}
-                  className="flex-1" />
-                <span className="text-xs font-bold text-purple-600 w-10 text-right">{selBubble.fontSize || 13}px</span>
+                <input type="range" min="9" max="30" step="1" value={selBubble.fontSize||13}
+                  onChange={e=>updateBubble(selBubble.id,{fontSize:+e.target.value})} className="flex-1"/>
+                <span className="text-xs font-bold text-purple-600 w-10 text-right">{selBubble.fontSize||13}px</span>
               </div>
-              {/* Width */}
               <div className="flex items-center gap-3">
                 <span className="text-xs font-extrabold text-purple-700 w-16">Width</span>
-                <input type="range" min="15" max="85" step="5"
-                  value={selBubble.width || 45}
-                  onChange={e => updateBubble(selBubble.id, { width: +e.target.value })}
-                  className="flex-1" />
-                <span className="text-xs font-bold text-purple-600 w-10 text-right">{selBubble.width || 45}%</span>
+                <input type="range" min="15" max="85" step="5" value={selBubble.width||45}
+                  onChange={e=>updateBubble(selBubble.id,{width:+e.target.value})} className="flex-1"/>
+                <span className="text-xs font-bold text-purple-600 w-10 text-right">{selBubble.width||45}%</span>
               </div>
             </div>
           )}
@@ -457,70 +530,88 @@ export default function EditorPage() {
       <div className="bg-white border-t-4 border-amber-900 shrink-0">
         <div className="flex border-b-2 border-amber-100">
           {([
-            { key: 'draw',    icon: '✏️', label: 'Draw'    },
-            { key: 'chars',   icon: '🦸', label: 'Chars'   },
-            { key: 'bubbles', icon: '💬', label: 'Bubbles' },
-            { key: 'bg',      icon: '🎨', label: 'BG'      },
-          ] as const).map(t => (
-            <button key={t.key} onClick={() => setActivePanel(t.key)}
-              className={`flex-1 py-2 text-xs font-extrabold flex flex-col items-center gap-0.5 ${
-                activePanel === t.key ? 'text-orange-600 bg-orange-50' : 'text-gray-500'
-              }`}>
+            {key:'draw',icon:'✏️',label:'Draw'},
+            {key:'chars',icon:'🦸',label:'Chars'},
+            {key:'bubbles',icon:'💬',label:'Bubbles'},
+            {key:'bg',icon:'🌄',label:'Scene'},
+          ] as const).map(t=>(
+            <button key={t.key} onClick={()=>setActivePanel(t.key)}
+              className={`flex-1 py-2 text-xs font-extrabold flex flex-col items-center gap-0.5 ${activePanel===t.key?'text-orange-600 bg-orange-50':'text-gray-500'}`}>
               <span>{t.icon}</span>{t.label}
             </button>
           ))}
         </div>
 
         <div className="p-3">
-          {activePanel === 'draw' && (
+          {/* ── Draw panel ── */}
+          {activePanel==='draw'&&(
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
+              {/* Tool row */}
+              <div className="flex items-center gap-2 flex-wrap">
                 {([
-                  { t: 'draw'  as ActiveTool, icon: '✏️', label: 'Draw'  },
-                  { t: 'erase' as ActiveTool, icon: '🧹', label: 'Erase' },
-                  { t: 'move'  as ActiveTool, icon: '✋', label: 'Move'  },
-                ]).map(btn => (
-                  <button key={btn.t} onClick={() => { setTool(btn.t); if (btn.t !== 'move') setSelected(null); }}
-                    className={`btn-ink px-3 py-2 rounded-lg text-sm font-bold ${tool === btn.t ? 'bg-amber-400' : 'bg-white'}`}>
+                  {t:'draw' as ActiveTool,icon:'✏️',label:'Draw'},
+                  {t:'erase' as ActiveTool,icon:'🧹',label:'Erase'},
+                  {t:'shape' as ActiveTool,icon:'🔷',label:'Shape'},
+                  {t:'move' as ActiveTool,icon:'✋',label:'Move'},
+                ]).map(btn=>(
+                  <button key={btn.t} onClick={()=>{setTool(btn.t);if(btn.t!=='move')setSelected(null);}}
+                    className={`btn-ink px-3 py-2 rounded-lg text-sm font-bold ${tool===btn.t?'bg-amber-400':'bg-white'}`}>
                     {btn.icon} {btn.label}
                   </button>
                 ))}
               </div>
-              {tool !== 'move' && (
+
+              {/* ✅ FIX 2: Shape picker */}
+              {tool==='shape'&&(
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {SHAPES.map(s=>(
+                      <button key={s.key} onClick={()=>setShapeTool(s.key)}
+                        className={`btn-ink px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 ${shapeTool===s.key?'bg-blue-400 text-blue-900':'bg-white text-gray-700'}`}>
+                        {s.emoji} {s.label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-gray-700 cursor-pointer">
+                    <input type="checkbox" checked={fillShape} onChange={e=>setFillShape(e.target.checked)} className="w-4 h-4"/>
+                    Fill shape
+                  </label>
+                </div>
+              )}
+
+              {/* Colors + size (hide in move mode) */}
+              {tool!=='move'&&(
                 <div className="flex items-center gap-2 flex-wrap">
-                  {['#1a1a2e','#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#ffffff','#ff6b9d'].map(c => (
-                    <button key={c} onClick={() => { setPenColor(c); setTool('draw'); }}
-                      className={`w-7 h-7 rounded-full border-2 transition-transform ${penColor === c ? 'border-amber-900 scale-125' : 'border-gray-300'}`}
-                      style={{ backgroundColor: c }}/>
+                  {['#1a1a2e','#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#ffffff','#ff6b9d','#ff8c00','#00ced1'].map(c=>(
+                    <button key={c} onClick={()=>{setPenColor(c);if(tool==='erase')setTool('draw');}}
+                      className={`w-7 h-7 rounded-full border-2 transition-transform ${penColor===c?'border-amber-900 scale-125':'border-gray-300'}`}
+                      style={{backgroundColor:c}}/>
                   ))}
                   <input type="range" min="2" max="24" value={penSize}
-                    onChange={e => setPenSize(+e.target.value)} className="w-20 ml-1"/>
+                    onChange={e=>setPenSize(+e.target.value)} className="w-20 ml-1"/>
                   <span className="text-xs font-bold text-gray-500">{penSize}px</span>
                 </div>
               )}
-              {tool === 'move' && (
-                <p className="text-xs text-amber-700 font-bold">
-                  Tap any character or bubble on the canvas → controls appear above this bar
-                </p>
+              {tool==='move'&&(
+                <p className="text-xs text-amber-700 font-bold">Tap any character or bubble → controls appear above</p>
               )}
             </div>
           )}
 
-          {activePanel === 'chars' && (
+          {/* ── Chars panel ── */}
+          {activePanel==='chars'&&(
             <div className="flex gap-2 flex-wrap items-center">
-              <button onClick={() => setShowCharBuilder(true)}
+              <button onClick={()=>setShowCharBuilder(true)}
                 className="btn-ink bg-amber-400 text-amber-900 px-3 py-2 rounded-xl font-extrabold text-sm">
                 + New Character
               </button>
-              {comic?.characters.map(char => (
+              {comic?.characters.map(char=>(
                 <button key={char.id}
-                  onClick={() => {
-                    if (!comic || !page) return;
-                    if (page.characters.find(c => c.characterId === char.id)) { toast('Already on this page!'); return; }
-                    const pages = comic.pages.map((p, i) => i !== currentPage ? p : {
-                      ...p, characters: [...p.characters, { characterId: char.id, x: 50, y: 50, size: 70, flipped: false, pose: 'standing' as CharacterPose }]
-                    });
-                    setComic({ ...comic, pages });
+                  onClick={()=>{
+                    if(!comic||!page) return;
+                    if(page.characters.find(c=>c.characterId===char.id)){toast('Already on this page!');return;}
+                    const pages=comic.pages.map((p,i)=>i!==currentPage?p:{...p,characters:[...p.characters,{characterId:char.id,x:50,y:50,size:70,flipped:false,pose:'standing' as CharacterPose}]});
+                    setComic({...comic,pages});
                     toast.success(`${char.name} added!`);
                   }}
                   className="btn-ink bg-white px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
@@ -528,48 +619,67 @@ export default function EditorPage() {
                   {char.name}
                 </button>
               ))}
-              {(comic?.characters.length ?? 0) > 0 && (
-                <p className="text-xs text-gray-400 w-full mt-1">Switch to ✋ Move → tap a character to resize / change pose</p>
+              {(comic?.characters.length??0)>0&&(
+                <p className="text-xs text-gray-400 w-full mt-1">Switch to ✋ Move → tap a character to resize/pose</p>
               )}
             </div>
           )}
 
-          {activePanel === 'bubbles' && (
+          {/* ── Bubbles panel ── */}
+          {activePanel==='bubbles'&&(
             <div className="flex gap-2 flex-wrap items-center">
-              <button onClick={() => setShowBubblePicker(true)}
+              <button onClick={()=>setShowBubblePicker(true)}
                 className="btn-ink bg-blue-400 text-blue-900 px-3 py-2 rounded-xl font-extrabold text-sm">+ Add Bubble</button>
-              <button onClick={() => setShowBot(true)}
+              <button onClick={()=>setShowBot(true)}
                 className="btn-ink bg-purple-400 text-purple-900 px-3 py-2 rounded-xl font-extrabold text-sm">🤖 ComicBot</button>
-              {(page?.textBubbles.length ?? 0) > 0 && (
-                <p className="text-xs text-gray-400 w-full mt-1">Switch to ✋ Move → tap a bubble to resize it</p>
+              {(page?.textBubbles.length??0)>0&&(
+                <p className="text-xs text-gray-400 w-full mt-1">Switch to ✋ Move → tap a bubble to resize</p>
               )}
             </div>
           )}
 
-          {activePanel === 'bg' && (
-            <div className="flex gap-2 flex-wrap items-center">
-              {BG_COLORS.map(c => (
-                <button key={c}
-                  onClick={() => {
-                    if (!comic || !page) return;
-                    const pages = comic.pages.map((p, i) => i === currentPage ? { ...p, backgroundColor: c } : p);
-                    setComic({ ...comic, pages });
-                  }}
-                  className="w-9 h-9 rounded-lg transition-transform"
-                  style={{
-                    backgroundColor: c,
-                    border: page?.backgroundColor === c ? '3px solid #f97316' : '2px solid #d1d5db',
-                    transform: page?.backgroundColor === c ? 'scale(1.15)' : 'scale(1)',
-                  }}/>
-              ))}
+          {/* ✅ FIX 5: Background scenarios panel */}
+          {activePanel==='bg'&&(
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-extrabold text-gray-600">Scene / Background</p>
+              <div className="grid grid-cols-4 gap-2">
+                {BG_SCENARIOS.map(s=>{
+                  const isActive=page?.backgroundColor===s.color;
+                  return (
+                    <button key={s.label}
+                      onClick={()=>{
+                        if(!comic||!page) return;
+                        const pages=comic.pages.map((p,i)=>i===currentPage?{...p,backgroundColor:s.color}:p);
+                        setComic({...comic,pages});
+                      }}
+                      className={`btn-ink rounded-xl py-2 flex flex-col items-center gap-0.5 text-xs font-bold ${isActive?'bg-amber-400 text-amber-900':'bg-white text-gray-600'}`}>
+                      <span className="text-xl">{s.emoji}</span>
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs font-extrabold text-gray-600 mt-1">Custom color</p>
+              <div className="flex gap-2 flex-wrap">
+                {BG_COLORS.map(c=>(
+                  <button key={c}
+                    onClick={()=>{
+                      if(!comic||!page) return;
+                      const pages=comic.pages.map((p,i)=>i===currentPage?{...p,backgroundColor:c}:p);
+                      setComic({...comic,pages});
+                    }}
+                    className="w-9 h-9 rounded-lg transition-transform"
+                    style={{backgroundColor:c,border:page?.backgroundColor===c?'3px solid #f97316':'2px solid #d1d5db',transform:page?.backgroundColor===c?'scale(1.15)':'scale(1)'}}/>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {showCharBuilder  && <CharacterBuilder onSave={handleAddChar}    onClose={() => setShowCharBuilder(false)}  />}
-      {showBubblePicker && <BubblePicker     onSelect={handleAddBubble} onClose={() => setShowBubblePicker(false)} />}
-      {showBot          && <ComicBot comicTitle={comic?.title}          onClose={() => setShowBot(false)}          />}
+      {showCharBuilder  &&<CharacterBuilder onSave={handleAddChar}    onClose={()=>setShowCharBuilder(false)}/>}
+      {showBubblePicker &&<BubblePicker     onSelect={handleAddBubble} onClose={()=>setShowBubblePicker(false)}/>}
+      {showBot          &&<ComicBot comicTitle={comic?.title}          onClose={()=>setShowBot(false)}/>}
     </div>
   );
 }
