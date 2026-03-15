@@ -430,7 +430,7 @@ function DaycareSVG() {
       <polygon points="274,405 290,410 274,415" fill="#40c040"/>
       <rect x="210" y="398" width="8" height="24" rx="3" fill="#30a030"/>
       {/* Color pyramid/stacking toy */}
-      {[[560,430,60,16,'#e84040'],[565,416,50,16,'#f4a020'],[570,402,40,16,'#f4e020'],[575,388,30,16,'#40c040'],[580,374,20,16,'#4080e8']].map(([x,y,w,h,c])=><rect key={y} x={x} y={y} width={w} height={h} rx={h/2 as number} fill={c as string}/>)}
+      {([[560,430,60,16,'#e84040'],[565,416,50,16,'#f4a020'],[570,402,40,16,'#f4e020'],[575,388,30,16,'#40c040'],[580,374,20,16,'#4080e8']] as [number,number,number,number,string][]).map(([x,y,w,h,c])=><rect key={y} x={x} y={y} width={w} height={h} rx={h/2} fill={c}/>)}
       <rect x="587" y="366" width="6" height="12" rx="3" fill="#888"/>
       {/* Round rug */}
       <ellipse cx="700" cy="440" rx="70" ry="35" fill="#9040c0" opacity="0.7"/>
