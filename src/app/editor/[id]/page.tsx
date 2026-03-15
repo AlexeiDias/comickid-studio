@@ -415,60 +415,97 @@ export default function EditorPage() {
           );
         })}
 
-        {tool==='move'&&!selected&&(<div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none z-50"><div className="bg-black/60 text-white text-xs font-bold px-3 py-1 rounded-full">✋ Tap a character or bubble to select</div></div>)}
-        {tool==='move'&&selected&&(<div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none z-50"><div className="bg-orange-500/90 text-white text-xs font-bold px-3 py-1 rounded-full">✅ Selected — use controls below • drag to move</div></div>)}
+        {tool==='move'&&!selected&&(
+          <div className="absolute top-2 left-0 right-0 flex justify-center pointer-events-none z-50">
+            <div className="bg-black/60 text-white text-xs font-bold px-3 py-1 rounded-full">✋ Tap a character or bubble to select</div>
+          </div>
+        )}
+
+        {/* ── Floating right-side controls panel — overlays canvas, no height stolen ── */}
+        {showControls&&(
+          <div
+            className="absolute top-2 right-2 z-50 w-44 rounded-2xl overflow-hidden"
+            style={{maxHeight:'calc(100% - 16px)',overflowY:'auto',backgroundColor:'rgba(245,240,255,0.97)',border:'3px solid #7c3aed',boxShadow:'0 4px 16px rgba(0,0,0,0.25)'}}
+            onClick={e=>e.stopPropagation()}
+            onMouseDown={e=>e.stopPropagation()}
+            onTouchStart={e=>e.stopPropagation()}
+          >
+            <div className="p-3">
+              {/* Close + label */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-extrabold text-purple-900 text-xs">
+                  {selChar ? `🦸 ${comic?.characters.find(c=>c.id===selChar.characterId)?.name}` : '💬 Bubble'}
+                </span>
+                <button onClick={()=>setSelected(null)} className="text-purple-400 text-base font-bold leading-none">✕</button>
+              </div>
+
+              {/* ── Character controls ── */}
+              {selChar&&(()=>{
+                return (<>
+                  {/* Size */}
+                  <p className="text-xs font-extrabold text-purple-700 mb-1">Size</p>
+                  <div className="flex items-center gap-1 mb-1">
+                    <input type="range" min="30" max="160" step="5"
+                      value={selChar.size||70}
+                      onChange={e=>updateChar(selChar.characterId,{size:+e.target.value})}
+                      className="flex-1 h-5"/>
+                  </div>
+                  <p className="text-xs text-purple-600 text-right mb-3">{selChar.size||70}px</p>
+
+                  {/* Flip */}
+                  <button onClick={()=>updateChar(selChar.characterId,{flipped:!selChar.flipped})}
+                    className={`w-full btn-ink py-2 rounded-lg text-xs font-bold mb-3 ${selChar.flipped?'bg-purple-400 text-purple-900':'bg-white text-gray-700'}`}>
+                    ↔ Flip {selChar.flipped?'ON':'OFF'}
+                  </button>
+
+                  {/* Delete */}
+                  <button onClick={()=>removeChar(selChar.characterId)}
+                    className="w-full btn-ink py-2 rounded-lg text-xs font-bold bg-red-100 text-red-600 mb-3">
+                    🗑 Remove
+                  </button>
+
+                  {/* Poses — vertical list so it doesn't go wide */}
+                  <p className="text-xs font-extrabold text-purple-700 mb-1">Pose</p>
+                  <div className="flex flex-col gap-1">
+                    {POSES.map(p=>(
+                      <button key={p.key}
+                        onClick={()=>updateChar(selChar.characterId,{pose:p.key})}
+                        className={`btn-ink px-2 py-1.5 rounded-lg text-xs font-bold text-left flex items-center gap-1 ${(selChar.pose||'standing')===p.key?'bg-purple-400 text-purple-900':'bg-white text-gray-600'}`}>
+                        {p.emoji} {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </>);
+              })()}
+
+              {/* ── Bubble controls ── */}
+              {selBubble&&(<>
+                <p className="text-xs font-extrabold text-purple-700 mb-1">Text size</p>
+                <input type="range" min="9" max="30" step="1"
+                  value={selBubble.fontSize||13}
+                  onChange={e=>updateBubble(selBubble.id,{fontSize:+e.target.value})}
+                  className="w-full h-5 mb-1"/>
+                <p className="text-xs text-purple-600 text-right mb-3">{selBubble.fontSize||13}px</p>
+
+                <p className="text-xs font-extrabold text-purple-700 mb-1">Width</p>
+                <input type="range" min="15" max="85" step="5"
+                  value={selBubble.width||45}
+                  onChange={e=>updateBubble(selBubble.id,{width:+e.target.value})}
+                  className="w-full h-5 mb-1"/>
+                <p className="text-xs text-purple-600 text-right mb-3">{selBubble.width||45}%</p>
+
+                {/* Delete bubble */}
+                <button onClick={()=>removeBubble(selBubble.id)}
+                  className="w-full btn-ink py-2 rounded-lg text-xs font-bold bg-red-100 text-red-600">
+                  🗑 Remove
+                </button>
+              </>)}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Selected item controls */}
-      {showControls&&(
-        <div className="bg-purple-50 border-t-2 border-purple-300 px-4 py-3 shrink-0" onClick={e=>e.stopPropagation()}>
-          {selChar&&(()=>{
-            const char=comic?.characters.find(c=>c.id===selChar.characterId);
-            return (<div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-extrabold text-purple-900 text-sm">🦸 {char?.name}</p>
-                <button onClick={()=>setSelected(null)} className="text-purple-400 text-lg font-bold">✕</button>
-              </div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-xs font-extrabold text-purple-700 w-10">Size</span>
-                <input type="range" min="30" max="160" step="5" value={selChar.size||70} onChange={e=>updateChar(selChar.characterId,{size:+e.target.value})} className="flex-1"/>
-                <span className="text-xs font-bold text-purple-600 w-10 text-right">{selChar.size||70}px</span>
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <button onClick={()=>updateChar(selChar.characterId,{flipped:!selChar.flipped})}
-                  className={`btn-ink px-4 py-2 rounded-xl text-sm font-bold ${selChar.flipped?'bg-purple-400 text-purple-900':'bg-white text-gray-700'}`}>
-                  ↔ Flip {selChar.flipped?'(ON)':'(OFF)'}
-                </button>
-              </div>
-              <p className="text-xs font-extrabold text-purple-700 mb-1">Pose</p>
-              <div className="flex gap-1 flex-wrap">
-                {POSES.map(p=>(
-                  <button key={p.key} onClick={()=>updateChar(selChar.characterId,{pose:p.key})}
-                    className={`btn-ink px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${(selChar.pose||'standing')===p.key?'bg-purple-400 text-purple-900':'bg-white text-gray-600'}`}>
-                    {p.emoji} {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>);
-          })()}
-          {selBubble&&(<div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-extrabold text-purple-900 text-sm">💬 Bubble</p>
-              <button onClick={()=>setSelected(null)} className="text-purple-400 text-lg font-bold">✕</button>
-            </div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-xs font-extrabold text-purple-700 w-16">Text size</span>
-              <input type="range" min="9" max="30" step="1" value={selBubble.fontSize||13} onChange={e=>updateBubble(selBubble.id,{fontSize:+e.target.value})} className="flex-1"/>
-              <span className="text-xs font-bold text-purple-600 w-10 text-right">{selBubble.fontSize||13}px</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-extrabold text-purple-700 w-16">Width</span>
-              <input type="range" min="15" max="85" step="5" value={selBubble.width||45} onChange={e=>updateBubble(selBubble.id,{width:+e.target.value})} className="flex-1"/>
-              <span className="text-xs font-bold text-purple-600 w-10 text-right">{selBubble.width||45}%</span>
-            </div>
-          </div>)}
-        </div>
-      )}
+      {/* Controls panel is now a floating sidebar — see inside canvas area */}
 
       {/* Toolbar */}
       <div className="bg-white border-t-4 border-amber-900 shrink-0">
