@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { getPublicComics, addReaction } from '@/lib/comicsService';
 import { Comic } from '@/types';
 import BottomNav from '@/components/ui/BottomNav';
@@ -8,12 +9,13 @@ import toast from 'react-hot-toast';
 const REACTIONS: Array<{ key: keyof Comic['reactions']; emoji: string }> = [
   { key: 'heart', emoji: '❤️' },
   { key: 'laugh', emoji: '😂' },
-  { key: 'fire', emoji: '🔥' },
-  { key: 'clap', emoji: '👏' },
+  { key: 'fire',  emoji: '🔥' },
+  { key: 'clap',  emoji: '👏' },
 ];
 
 export default function GalleryPage() {
-  const [comics, setComics] = useState<Comic[]>([]);
+  const router = useRouter();
+  const [comics, setComics]   = useState<Comic[]>([]);
   const [loading, setLoading] = useState(true);
   const [reacted, setReacted] = useState<Set<string>>(new Set());
 
@@ -57,28 +59,39 @@ export default function GalleryPage() {
           <div className="space-y-4">
             {comics.map(comic => (
               <div key={comic.id} className="comic-panel bg-white rounded-xl overflow-hidden pop-in">
-                {/* Cover */}
-                <div className="h-40 flex items-center justify-center font-display text-white relative"
-                  style={{ backgroundColor: comic.coverColor }}>
-                  <div className="text-center">
-                    <div className="text-6xl mb-1">{comic.title.charAt(0)}</div>
-                    <div className="text-2xl drop-shadow">{comic.title}</div>
+                {/* Cover — tap to read */}
+                <button
+                  className="w-full h-44 flex items-center justify-center font-display text-white relative overflow-hidden"
+                  style={{ backgroundColor: comic.coverColor }}
+                  onClick={() => router.push(`/read/${comic.id}`)}>
+                  {/* Halftone texture */}
+                  <div className="absolute inset-0 opacity-15"
+                    style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 10px)' }}/>
+                  <div className="relative text-center z-10">
+                    <div className="text-5xl mb-1">{comic.title.charAt(0).toUpperCase()}</div>
+                    <div className="text-xl drop-shadow px-4">{comic.title}</div>
+                    <div className="mt-2 bg-white/20 rounded-full px-3 py-1 text-sm font-bold inline-block">
+                      📖 Read — {comic.pageCount} page{comic.pageCount !== 1 ? 's' : ''}
+                    </div>
                   </div>
-                  <div className="absolute bottom-2 right-3 bg-black/30 rounded-full px-2 py-0.5 text-xs font-bold">
-                    {comic.pageCount} pages
-                  </div>
-                </div>
+                </button>
 
-                {/* Info */}
+                {/* Info + reactions */}
                 <div className="p-3">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="font-extrabold text-gray-900">{comic.title}</p>
                       <p className="text-xs text-gray-500 font-bold">by {comic.authorName}</p>
                     </div>
+                    <button
+                      onClick={() => router.push(`/read/${comic.id}`)}
+                      className="btn-ink bg-purple-500 text-white px-4 py-2 rounded-xl font-extrabold text-sm">
+                      📖 Read
+                    </button>
                   </div>
+
                   {comic.description && (
-                    <p className="text-sm text-gray-700 font-bold mb-2">{comic.description}</p>
+                    <p className="text-sm text-gray-700 font-bold mb-3">{comic.description}</p>
                   )}
 
                   {/* Reactions */}

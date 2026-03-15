@@ -138,10 +138,16 @@ export default function LibraryPage() {
                       className="w-full mt-1 btn-ink bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">✏️ Start Working</button>
                   )}
                   {activeTab === 'finished' && (
-                    <button onClick={() => updateComic(comic.id, { isPublic: !comic.isPublic }).then(loadComics)}
-                      className={`w-full mt-1 btn-ink text-xs px-2 py-1 rounded ${comic.isPublic ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {comic.isPublic ? '🌍 Public' : '🔒 Make Public'}
-                    </button>
+                    <>
+                      <button onClick={() => router.push(`/read/${comic.id}`)}
+                        className="w-full mt-1 btn-ink bg-purple-500 text-white text-xs px-2 py-1 rounded">
+                        📖 Read
+                      </button>
+                      <button onClick={() => updateComic(comic.id, { isPublic: !comic.isPublic }).then(loadComics)}
+                        className={`w-full mt-1 btn-ink text-xs px-2 py-1 rounded ${comic.isPublic ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {comic.isPublic ? '🌍 Public' : '🔒 Make Public'}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
