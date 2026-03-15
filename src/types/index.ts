@@ -40,6 +40,7 @@ export interface ComicPanel {
   layout: string;
   backgroundColor: string;
   backgroundPattern: string;
+  sceneKey: string;          // e.g. 'farm', 'school', 'blank'
   characters: PageCharacter[];
   textBubbles: TextBubble[];
   soundEffects: Array<{ text: string; x: number; y: number; color: string }>;
